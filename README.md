@@ -18,7 +18,7 @@ An AI-driven developer productivity analytics system that extracts, stores, and 
 
 ### Prerequisites
 
-- **JDK 17+** ([Download](https://adoptium.net/))
+- **Java 21+** ([Download](https://adoptium.net/))
 - **PostgreSQL 12+** ([Download](https://www.postgresql.org/download/))
 - **Git** (for extracting repository data)
 
@@ -215,7 +215,8 @@ OUTPUT_DIR=./data/exports
 
 ### Technology Stack
 
-- **Language**: Kotlin 1.9.21
+- **Language**: Kotlin 2.2.21
+- **Java**: Java 21+
 - **Build Tool**: Gradle (Kotlin DSL)
 - **Database ORM**: Exposed (JetBrains)
 - **Database**: PostgreSQL 12+
