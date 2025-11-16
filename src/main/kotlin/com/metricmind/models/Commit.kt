@@ -19,6 +19,7 @@ data class Commit(
     val weight: Int = 100,  // 0-100, where 0 = reverted
     val aiTools: String? = null,  // Comma-separated AI tools used
     val category: String? = null,  // Business domain category
+    val aiConfidence: Int? = null,  // 0-100, AI categorization confidence (null = not AI-categorized)
     val files: List<CommitFile> = emptyList()
 )
 
@@ -30,4 +31,17 @@ data class CommitFile(
     val filename: String,
     val added: Int,
     val deleted: Int
+)
+
+/**
+ * Represents a business domain category for commit classification
+ */
+@Serializable
+data class Category(
+    val id: Int,
+    val name: String,
+    val description: String? = null,
+    val usageCount: Int = 0,
+    val createdAt: String,
+    val updatedAt: String
 )

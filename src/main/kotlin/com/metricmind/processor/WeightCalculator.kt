@@ -15,9 +15,7 @@ private val logger = KotlinLogging.logger {}
 data class WeightStats(
     var total: Int = 0,
     var revertsFound: Int = 0,
-    var unrevertsFound: Int = 0,
-    var commitsZeroed: Int = 0,
-    var commitsRestored: Int = 0
+    var commitsZeroed: Int = 0
 )
 
 /**
@@ -30,25 +28,26 @@ class WeightCalculator(
     private val stats = WeightStats()
 
     companion object {
-        // Patterns for PR/MR numbers
-        private val PR_PATTERN_GITLAB = Regex("""!\d+""") // !12345
-        private val PR_PATTERN_GITHUB = Regex("""#\d+""")  // #12345
+        // Patterns for PR/MR numbers (with or without parentheses)
+        private val PR_PATTERN_GITLAB = Regex("""!(\d+)""") // !12345 or (!12345)
+        private val PR_PATTERN_GITHUB = Regex("""#(\d+)""")  // #12345 or (#12345)
 
         /**
          * Extract PR/MR numbers from commit subject
          * Returns list of PR/MR identifiers like "!12345" or "#12345"
+         * Matches both with and without parentheses: !123 and (!123)
          */
         fun extractPrNumbers(subject: String): List<String> {
             val numbers = mutableSetOf<String>()
 
-            // Find GitLab style (!12345)
+            // Find GitLab style !12345 or (!12345)
             PR_PATTERN_GITLAB.findAll(subject).forEach {
-                numbers.add(it.value)
+                numbers.add("!${it.groupValues[1]}")
             }
 
-            // Find GitHub style (#12345)
+            // Find GitHub style #12345 or (#12345)
             PR_PATTERN_GITHUB.findAll(subject).forEach {
-                numbers.add(it.value)
+                numbers.add("#${it.groupValues[1]}")
             }
 
             return numbers.toList()
@@ -71,7 +70,12 @@ class WeightCalculator(
     }
 
     /**
-     * Execute weight calculation with two-pass algorithm
+     * Execute weight calculation with single-pass algorithm
+     *
+     * This processes only revert commits, setting weight=0 for both the revert
+     * and its original commits. Unrevert commits are NOT processed - they stay
+     * at their default weight=100, while the original commits remain at weight=0.
+     * This prevents double-counting work.
      */
     fun calculate(): WeightStats {
         logger.info { "Starting weight calculation${if (repoName != null) " for repository: $repoName" else " for all repositories"}" }
@@ -89,11 +93,8 @@ class WeightCalculator(
             val commits = fetchCommits()
             stats.total = commits.size
 
-            // Pass 1: Process reverts
+            // Single pass: Process only reverts (not unreverts)
             processReverts(commits)
-
-            // Pass 2: Process unreverts
-            processUnreverts(commits)
         }
 
         printSummary()
@@ -127,10 +128,16 @@ class WeightCalculator(
     }
 
     /**
-     * Pass 1: Process revert commits
+     * Process revert commits (single pass)
+     *
+     * For each revert commit:
+     * 1. Set weight=0 for the revert commit itself
+     * 2. Set weight=0 for all original commits matching the PR/MR number
+     *
+     * Note: "Unrevert" commits are excluded by isRevertCommit() and remain at weight=100
      */
     private fun processReverts(commits: List<CommitData>) {
-        logger.info { "Pass 1: Processing reverts..." }
+        logger.info { "Processing reverts..." }
 
         commits.filter { isRevertCommit(it.subject) }.forEach { revertCommit ->
             stats.revertsFound++
@@ -170,41 +177,6 @@ class WeightCalculator(
     }
 
     /**
-     * Pass 2: Process unrevert commits
-     */
-    private fun processUnreverts(commits: List<CommitData>) {
-        logger.info { "Pass 2: Processing unreverts..." }
-
-        commits.filter { isUnrevertCommit(it.subject) }.forEach { unrevertCommit ->
-            stats.unrevertsFound++
-
-            // Extract PR numbers from unrevert commit
-            val prNumbers = extractPrNumbers(unrevertCommit.subject)
-
-            if (prNumbers.isNotEmpty()) {
-                // Find original commits with matching PR numbers (exclude reverts)
-                val originalCommits = commits.filter { commit ->
-                    commit.id != unrevertCommit.id &&
-                            commit.repositoryId == unrevertCommit.repositoryId &&
-                            !isRevertCommit(commit.subject) &&
-                            prNumbers.any { pr -> commit.subject.contains(pr) }
-                }
-
-                // Restore weight=100 for original commits
-                originalCommits.forEach { original ->
-                    if (original.weight != 100) {
-                        if (!dryRun) {
-                            setWeight(original.id, 100)
-                        }
-                        stats.commitsRestored++
-                        logger.debug { "Unrevert: ${unrevertCommit.hash} restored ${original.hash}" }
-                    }
-                }
-            }
-        }
-    }
-
-    /**
      * Update commit weight
      */
     private fun setWeight(commitId: Int, weight: Int) {
@@ -220,9 +192,7 @@ class WeightCalculator(
         println("\n=== Weight Calculation Summary ===")
         println("Total commits: ${stats.total}")
         println("Reverts found: ${stats.revertsFound}")
-        println("Unreverts found: ${stats.unrevertsFound}")
         println("Commits zeroed (weight=0): ${stats.commitsZeroed}")
-        println("Commits restored (weight=100): ${stats.commitsRestored}")
         if (dryRun) {
             println("(DRY RUN - no changes saved)")
         }
@@ -230,8 +200,7 @@ class WeightCalculator(
 
         logger.info {
             "Weight calculation complete: ${stats.revertsFound} reverts, " +
-                    "${stats.unrevertsFound} unreverts, " +
-                    "${stats.commitsZeroed} zeroed, ${stats.commitsRestored} restored"
+                    "${stats.commitsZeroed} commits zeroed"
         }
     }
 

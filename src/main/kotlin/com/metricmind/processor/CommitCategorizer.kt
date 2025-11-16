@@ -37,32 +37,43 @@ class CommitCategorizer(
 
         /**
          * Extract category from commit subject using three patterns
+         * Validates the extracted category to ensure it meets requirements
          */
         fun extractCategory(subject: String?): String? {
             if (subject.isNullOrBlank()) return null
 
+            var category: String? = null
+
             // Pattern 1: Pipe delimiter - "BILLING | Description"
             if (subject.contains(" | ")) {
-                val category = subject.split(" | ", limit = 2)[0].trim().uppercase()
-                if (category.isNotBlank()) return category
-            }
-
-            // Pattern 2: Square brackets - "[CS] Description"
-            val bracketMatch = Regex("""^\[([^\]]+)\]""").find(subject)
-            if (bracketMatch != null) {
-                val category = bracketMatch.groupValues[1].trim().uppercase()
-                if (category.isNotBlank()) return category
-            }
-
-            // Pattern 3: First uppercase word - "BILLING Description"
-            val firstWord = subject.trim().split(Regex("""\s+"""), limit = 2)[0]
-            if (firstWord.length >= 2 && firstWord == firstWord.uppercase()) {
-                if (firstWord !in EXCLUDED_WORDS) {
-                    return firstWord
+                val extracted = subject.split(" | ", limit = 2)[0].trim().uppercase()
+                if (extracted.isNotBlank() && CategoryValidator.isValid(extracted)) {
+                    category = extracted
                 }
             }
 
-            return null
+            // Pattern 2: Square brackets - "[CS] Description"
+            if (category == null) {
+                val bracketMatch = Regex("""^\[([^\]]+)\]""").find(subject)
+                if (bracketMatch != null) {
+                    val extracted = bracketMatch.groupValues[1].trim().uppercase()
+                    if (extracted.isNotBlank() && CategoryValidator.isValid(extracted)) {
+                        category = extracted
+                    }
+                }
+            }
+
+            // Pattern 3: First uppercase word - "BILLING Description"
+            if (category == null) {
+                val firstWord = subject.trim().split(Regex("""\s+"""), limit = 2)[0]
+                if (firstWord.length >= 2 && firstWord == firstWord.uppercase()) {
+                    if (firstWord !in EXCLUDED_WORDS && CategoryValidator.isValid(firstWord)) {
+                        category = firstWord
+                    }
+                }
+            }
+
+            return category
         }
     }
 

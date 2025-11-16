@@ -39,7 +39,6 @@ class WeightCommand : Subcommand("weights", "Calculate commit weights (revert de
             println("  Total commits: ${stats.total}")
             println("  Reverts found: ${stats.revertsFound}")
             println("  Commits zeroed: ${stats.commitsZeroed}")
-            println("  Commits restored: ${stats.commitsRestored}")
         } catch (e: Exception) {
             System.err.println("✗ Weight calculation failed: ${e.message}")
             throw e

@@ -148,7 +148,7 @@ class RunCommand : Subcommand("run", "Run complete extraction and processing wor
         println("  → Calculating commit weights...")
         val calculator = WeightCalculator()
         val weightStats = calculator.calculate()
-        println("    ✓ Processed ${weightStats.revertsFound} reverts, ${weightStats.unrevertsFound} unreverts")
+        println("    ✓ Processed ${weightStats.revertsFound} reverts, zeroed ${weightStats.commitsZeroed} commits")
 
         println("  ✓ Post-processing complete")
     }

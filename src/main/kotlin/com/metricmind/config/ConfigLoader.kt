@@ -122,6 +122,14 @@ object ConfigLoader {
     }
 
     /**
+     * Load AI configuration from environment variables
+     */
+    fun loadAiConfig(): AiConfig {
+        val env = getAllEnv()
+        return AiConfig.fromEnv(env)
+    }
+
+    /**
      * Expand tilde in path (~/ → /home/user/)
      */
     fun expandPath(path: String): String {

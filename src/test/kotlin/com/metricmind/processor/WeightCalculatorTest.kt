@@ -77,7 +77,9 @@ class WeightCalculatorTest : StringSpec({
     "should handle PR numbers without parentheses" {
         val subject = "Fix !123 and #456"
         val prNumbers = WeightCalculator.extractPrNumbers(subject)
-        prNumbers shouldBe emptyList() // Only matches with parentheses
+        prNumbers.size shouldBe 2  // Matches with or without parentheses
+        prNumbers shouldContain "!123"
+        prNumbers shouldContain "#456"
     }
 
     "should extract PR numbers in parentheses only" {

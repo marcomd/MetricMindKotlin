@@ -32,6 +32,7 @@ object Commits : IntIdTable("commits") {
     val weight = integer("weight").default(100)
     val aiTools = varchar("ai_tools", 255).nullable()
     val category = varchar("category", 100).nullable()
+    val aiConfidence = short("ai_confidence").nullable()
     val createdAt = timestamp("created_at").defaultExpression(CurrentTimestamp())
 
     init {
@@ -41,5 +42,20 @@ object Commits : IntIdTable("commits") {
         index(false, authorEmail)
         index(false, authorName)
         index(false, hash)
+    }
+}
+
+/**
+ * Categories table definition for approved business domain categories
+ */
+object Categories : IntIdTable("categories") {
+    val name = varchar("name", 100).uniqueIndex()
+    val description = text("description").nullable()
+    val usageCount = integer("usage_count").default(0)
+    val createdAt = timestamp("created_at").defaultExpression(CurrentTimestamp())
+    val updatedAt = timestamp("updated_at").defaultExpression(CurrentTimestamp())
+
+    init {
+        index(false, name)
     }
 }

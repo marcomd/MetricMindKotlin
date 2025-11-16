@@ -2,14 +2,21 @@
 
 An AI-driven developer productivity analytics system that extracts, stores, and visualizes git commit data from multiple repositories to measure the impact of development tools and practices.
 
-**This is the Kotlin implementation** - a complete rewrite from Ruby/Bash to Kotlin with modern JVM tooling.
+**This is the Kotlin implementation** - a complete porting from Ruby with modern JVM tooling.
+
+![Cover](docs/MetricMindCover_kotlin.jpg)
 
 ## Features
 
 - **Git Data Extraction**: Parse commit history with file-level statistics
 - **AI Tools Tracking**: Automatically detect AI tools used (Claude Code, Cursor, GitHub Copilot, etc.)
-- **Business Domain Categorization**: Extract categories from commit messages (BILLING, CS, INFRA, etc.)
-- **Revert Detection**: Calculate commit weights based on revert/unrevert patterns
+- **AI-Powered Categorization** ⭐ NEW (v1.0.0): Intelligent commit categorization using LLMs
+  - Supports Gemini (Google) and Ollama (local) providers
+  - Automatic category detection with confidence scoring (0-100)
+  - Category validation (rejects numeric/version numbers)
+  - Fallback to pattern-based categorization
+- **Business Domain Categorization**: Pattern-based category extraction (BILLING, CS, INFRA, etc.)
+- **Revert Detection**: Calculate commit weights (fixed double-counting bug in v1.0.0)
 - **PostgreSQL Storage**: Efficient storage with indexes and materialized views
 - **Multi-Repository Support**: Process multiple repositories in one workflow
 - **Comprehensive Analytics**: Pre-computed views for fast dashboard queries
@@ -211,12 +218,70 @@ OUTPUT_DIR=./data/exports
 }
 ```
 
+### AI Categorization Configuration (.env)
+
+MetricMind v1.0.0 supports AI-powered commit categorization using LLMs:
+
+```bash
+# AI Categorization (NEW in v1.0.0)
+AI_PROVIDER=ollama                    # Options: gemini, ollama (leave empty to disable)
+AI_TIMEOUT=30                         # Timeout in seconds (default: 30)
+AI_RETRIES=3                          # Retry attempts on failure (default: 3)
+PREVENT_NUMERIC_CATEGORIES=true       # Reject numeric categories (default: true)
+
+# Gemini Configuration (Google Cloud)
+GEMINI_API_KEY=your_api_key_here
+GEMINI_MODEL=gemini-2.0-flash-exp    # Model name (default: gemini-2.0-flash-exp)
+GEMINI_TEMPERATURE=0.1               # Temperature 0.0-2.0 (default: 0.1)
+
+# Ollama Configuration (Local LLM)
+OLLAMA_URL=http://localhost:11434    # Ollama server URL
+OLLAMA_MODEL=llama2                  # Model name
+OLLAMA_TEMPERATURE=0.1               # Temperature 0.0-2.0
+```
+
+**Getting Started with AI Categorization:**
+
+1. **Using Ollama (Local, Free)**:
+   ```bash
+   # Install Ollama (https://ollama.ai)
+   ollama pull llama2
+
+   # Configure .env
+   AI_PROVIDER=ollama
+   OLLAMA_MODEL=llama2
+
+   # Run categorization
+   ./gradlew run --args="categorize"
+   ```
+
+2. **Using Gemini (Cloud)**:
+   ```bash
+   # Get API key from https://makersuite.google.com/app/apikey
+
+   # Configure .env
+   AI_PROVIDER=gemini
+   GEMINI_API_KEY=your_api_key_here
+
+   # Run categorization
+   ./gradlew run --args="categorize"
+   ```
+
+**AI Features:**
+- Analyzes commit subject and modified files
+- Prefers existing categories for consistency
+- Creates new categories when needed
+- Tracks confidence score (0-100)
+- Validates categories (rejects version numbers, issue IDs)
+- Automatic retry with exponential backoff
+- Falls back to pattern-based if disabled
+
 ## Architecture
 
 ### Technology Stack
 
-- **Language**: Kotlin 2.2.21
-- **Java**: Java 21+
+- **Language**: Kotlin 2.1.0
+- **Java**: Java 17+
 - **Build Tool**: Gradle (Kotlin DSL)
 - **Database ORM**: Exposed (JetBrains)
 - **Database**: PostgreSQL 12+
@@ -224,6 +289,7 @@ OUTPUT_DIR=./data/exports
 - **Connection Pooling**: HikariCP
 - **CLI**: kotlinx-cli
 - **JSON**: kotlinx-serialization
+- **HTTP Client**: Ktor (for AI API integration)
 - **Logging**: kotlin-logging + Logback
 - **Testing**: Kotest + MockK + Testcontainers
 
@@ -238,6 +304,7 @@ src/
 │   │   ├── extractor/        # Git extraction logic
 │   │   ├── loader/           # Data loading to database
 │   │   ├── processor/        # Categorization & weight calculation
+│   │   ├── ai/               # ⭐ NEW: AI categorization (Gemini, Ollama)
 │   │   ├── cleaner/          # Repository cleanup
 │   │   ├── config/           # Configuration loading
 │   │   ├── models/           # Data models
@@ -260,6 +327,7 @@ The application uses Flyway migrations to manage the database schema:
 - **V3**: Add weight and AI tools tracking
 - **V4**: Create standard analytics views
 - **V5**: Create category analytics views
+- **V6** ⭐ NEW: AI categorization support (categories table, ai_confidence column)
 
 All views include both weighted and unweighted metrics.
 
@@ -448,16 +516,16 @@ gradle wrapper --gradle-version=8.5
 
 ## Comparison: Ruby vs Kotlin
 
-| Feature | Ruby Version | Kotlin Version |
-|---------|-------------|----------------|
-| Language | Ruby 3.3+ | Kotlin 1.9.21 |
-| Database | pg gem | Exposed ORM + JDBC |
-| CLI | Custom scripts | kotlinx-cli |
-| Orchestration | Bash scripts | Kotlin RunCommand |
-| Testing | RSpec | Kotest |
-| Packaging | Ruby interpreter required | Fat JAR (standalone) |
-| Performance | Moderate | Faster (JVM) |
-| Type Safety | Dynamic | Static typing |
+| Feature       | Ruby Version              | Kotlin Version       |
+| ------------- | ------------------------- | -------------------- |
+| Language      | Ruby 3.3+                 | Kotlin 1.9.21        |
+| Database      | pg gem                    | Exposed ORM + JDBC   |
+| CLI           | Custom scripts            | kotlinx-cli          |
+| Orchestration | Bash scripts              | Kotlin RunCommand    |
+| Testing       | RSpec                     | Kotest               |
+| Packaging     | Ruby interpreter required | Fat JAR (standalone) |
+| Performance   | Moderate                  | Faster (JVM)         |
+| Type Safety   | Dynamic                   | Static typing        |
 
 ## Contributing
 
